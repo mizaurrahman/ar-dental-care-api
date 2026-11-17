@@ -116,6 +116,26 @@ class MultiDoctorIsolationTest extends TestCase
             ->assertJsonPath('appointment_url', $doctor->appointment_url);
     }
 
+    public function test_public_appointment_includes_clinic_and_profile_images(): void
+    {
+        $registered = $this->registerDoctor('Dr Photo', 'Photo Dental', 'photo@example.com');
+        $doctor = User::find($registered['user']['id']);
+        $doctor->forceFill([
+            'avatar_path' => 'avatars/demo-doctor.jpg',
+            'logo_path' => 'logos/demo-clinic.png',
+            'qualifications' => 'B.D.S',
+            'bmdc_reg' => 'BMDC-9',
+        ])->save();
+
+        $this->getJson('/api/public/appointment/'.$doctor->appointment_slug)
+            ->assertOk()
+            ->assertJsonPath('doctor.clinic_name', 'Photo Dental')
+            ->assertJsonPath('doctor.qualifications', 'B.D.S')
+            ->assertJsonPath('doctor.bmdc_reg', 'BMDC-9')
+            ->assertJsonPath('doctor.avatar_url', $doctor->fresh()->avatar_url)
+            ->assertJsonPath('doctor.logo_url', $doctor->fresh()->logo_url);
+    }
+
     /**
      * @return array{user: array, appointment_url: string}
      */

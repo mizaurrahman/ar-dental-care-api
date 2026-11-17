@@ -27,10 +27,13 @@ class PublicAppointmentController extends Controller
                 'name' => $doctor->name,
                 'clinic_name' => $doctor->clinic_name,
                 'specialty' => $doctor->specialty,
+                'qualifications' => $doctor->qualifications,
+                'bmdc_reg' => $doctor->bmdc_reg,
                 'clinic_address' => $doctor->clinic_address,
                 'clinic_phone' => $doctor->clinic_phone,
                 'visiting_hours' => $doctor->visiting_hours,
                 'avatar_url' => $doctor->avatar_url,
+                'logo_url' => $doctor->logo_url,
             ],
             'slots' => $slots->slotsForRange($doctor, $from, $to),
         ]);
