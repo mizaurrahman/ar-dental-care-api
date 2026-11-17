@@ -124,5 +124,5 @@ php artisan test
 
 - `README.md` — product overview
 - `CLAUDE.md` / `AGENTS.md` — architecture for AI coding tools
-- `docs/DEPLOYMENT.md` — VPS and Docker deployment detail
+- `docs/DEPLOYMENT.md` — VPS, Docker, and free PaaS (Render + Cloudflare Pages)
 - `LISTING.md` — suggested Vibe96 listing copy

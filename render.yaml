@@ -1,0 +1,58 @@
+# Render Blueprint — free API + Postgres for AR Dental Care
+# Dashboard: New → Blueprint → connect mizaurrahman/ar-dental-care-api
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: ar-dental-care-db
+    plan: free
+    databaseName: ardental
+    user: ardental
+
+services:
+  - type: web
+    name: ar-dental-care-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: AR Dental Care
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      # Generate locally: php artisan key:generate --show
+      # Paste the full base64:… value in the Render dashboard
+      - key: APP_KEY
+        sync: false
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: info
+      - key: MAIL_MAILER
+        value: log
+      - key: SMS_DRIVER
+        value: log
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: SEED_ON_BOOT
+        value: "true"
+      # Set these after Cloudflare Pages deploy (replace with your *.pages.dev URL)
+      - key: FRONTEND_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ar-dental-care-db
+          property: connectionString

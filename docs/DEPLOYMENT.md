@@ -1,97 +1,67 @@
-# Deployment — AR Dental Care
+# Deployment — AR Dental Care API
 
-Documented deployment routes for Vibe96 (minimum two).
+Three paths: Docker/VPS MySQL, manual VPS, and **free PaaS** (Render + Cloudflare Pages for the SPA).
 
-## Target 1 — Docker Compose (Linux VPS)
+## Target 1 — Docker (MySQL)
 
-**Requirements:** Docker Engine + Docker Compose plugin, 1–2 vCPU, 2 GB RAM recommended.
+Use the product monorepo `docker-compose.yml`, or build this repo’s `Dockerfile` with MySQL env vars (`DB_CONNECTION=mysql`, etc.).
 
-```bash
-git clone <your-repo> ardental && cd ardental
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
+## Target 2 — Manual VPS
 
-Edit `backend/.env` for production:
-
-```env
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://api.yourdomain.com
-FRONTEND_URL=https://app.yourdomain.com
-DB_CONNECTION=mysql
-DB_HOST=db
-DB_PORT=3306
-DB_DATABASE=ardental
-DB_USERNAME=ardental
-DB_PASSWORD=REPLACE_WITH_RANDOM_PASSWORD
-MAIL_MAILER=smtp
-# MAIL_HOST / MAIL_USERNAME / MAIL_PASSWORD …
-```
-
-Edit `frontend/.env`:
-
-```env
-VITE_API_URL=https://api.yourdomain.com/api
-```
-
-Start:
+PHP 8.2–8.4 FPM, Composer, MySQL 8, nginx → `public/`.
 
 ```bash
-docker compose up -d --build
-```
-
-Put nginx/Caddy TLS in front of ports `8080` (SPA) and `8000` (API), or map hostnames to those services.
-
-## Target 2 — Manual VPS (nginx + PHP-FPM + Node build)
-
-**Requirements:** Ubuntu 22.04+, PHP 8.2–8.4 FPM, Composer, Node 20+, MySQL 8, nginx.
-
-### Database
-
-```bash
-sudo mysql -e "CREATE DATABASE ardental CHARACTER SET utf8mb4; CREATE USER 'ardental'@'localhost' IDENTIFIED BY 'REPLACE_PASSWORD'; GRANT ALL ON ardental.* TO 'ardental'@'localhost'; FLUSH PRIVILEGES;"
-```
-
-### API
-
-```bash
-cd /var/www/ardental/backend
 cp .env.example .env
-# set APP_URL, FRONTEND_URL, DB_*, MAIL_*, APP_DEBUG=false
+# APP_URL, FRONTEND_URL, DB_*, APP_DEBUG=false
 composer install --no-dev --optimize-autoloader
 php artisan key:generate
 php artisan migrate --seed --force
 php artisan storage:link
-php artisan config:cache
-php artisan route:cache
+php artisan config:cache && php artisan route:cache
 ```
 
-Point nginx root for the API host at `backend/public`.
+## Target 3 — Free PaaS (Render API + Cloudflare Pages SPA)
 
-### SPA
+No paid domain. Free subdomains:
 
-```bash
-cd /var/www/ardental/frontend
-cp .env.example .env
-# VITE_API_URL=https://api.yourdomain.com/api
-npm ci
-npm run build
-```
+| Layer | Host | Example |
+|-------|------|---------|
+| This API + Postgres | Render | `https://ar-dental-care-api.onrender.com` |
+| SPA | Cloudflare Pages | `https://ar-dental-care-web.pages.dev` |
 
-Serve `frontend/dist` as a static site (SPA fallback to `index.html`).
+Web repo: [ar-dental-care-web](https://github.com/mizaurrahman/ar-dental-care-web).
 
-### Process notes
+### Deploy this API
 
-- Optional queue worker: `php artisan queue:work` if you switch mail/SMS to queues.
-- Scheduler (optional reminders later): `* * * * * cd /var/www/ardental/backend && php artisan schedule:run`
+1. `php artisan key:generate --show` → copy `base64:…`.
+2. Render → **New** → **Blueprint** → this repository ([`render.yaml`](../render.yaml)).
+3. Set env:
+   - `APP_KEY` = `base64:…`
+   - `APP_URL` = `https://YOUR-SERVICE.onrender.com`
+   - `FRONTEND_URL` = `https://YOUR-PROJECT.pages.dev` (after Pages deploy)
+4. Free Postgres is provisioned; `DATABASE_URL` is injected. Boot migrates + seeds.
+5. Health: `GET /up`.
 
-## Hosting estimate
+### Deploy the SPA
 
-| | Minimum | Recommended |
-|--|---------|-------------|
-| CPU | 1 vCPU | 2 vCPU |
-| RAM | 2 GB | 4 GB |
-| Est. monthly | ~$12–20 | ~$20–40 |
+1. Cloudflare Pages → connect `ar-dental-care-web`.
+2. Build: `npm ci && npm run build` → output `dist`.
+3. Env: `VITE_API_URL=https://YOUR-SERVICE.onrender.com/api`.
+4. Paste Pages URL into Render `FRONTEND_URL` and redeploy API once.
 
-Third-party SMTP / SMS / Oushodh fees are not included.
+### URLs / CORS
+
+- `FRONTEND_URL` → appointment QR + Rx share links.
+- `APP_URL` → absolute avatar/logo URLs.
+- `config/cors.php` allows `FRONTEND_URL` and free-host patterns (`*.pages.dev`, etc.).
+- Optional `CORS_ALLOWED_ORIGINS` for extra preview hosts.
+
+### Limits
+
+- Free Render **sleeps** when idle (cold start 30–60s).
+- Uploaded files on free disk are ephemeral.
+
+## Smoke test
+
+1. Pages login: `doctor@ardental.local` / `password`.
+2. Public booking + Rx share links use the Pages host (not localhost).
